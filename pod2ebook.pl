@@ -57,6 +57,7 @@ if (exists $opts{o}) {
 }
 
 print "Output format will be '$out_format'\n";
+print "Output filename will be '$out_file'\n";
 
 if (@ARGV < 1) {
     die "ERROR: no input files found, see help for usage:\n\n$help_msg";
