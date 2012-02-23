@@ -19,11 +19,13 @@ my $help_msg = <<END;
     -a author      Author of the book (meta information)
     -c path        Image for a cover of the book
     -s html-string Primitive HTML for a cover of the book
-    -e encoding    Encoding                                TODO
+                   (only sopported by the mobi output format)
+    -e encoding    Encoding (e.g. utf-8)
+    -p             TOC entries from POD heading, otherwise sourcename
 
     [file|dir]      Multiple filenames or directories containing POD
 
-    NOTICE: write the options (t,o) before the list of POD files or dirs
+    NOTICE: write the options _before_ the list of POD files or dirs
 
   Short Examples:
     programname -f mobi file1 file2
@@ -32,17 +34,19 @@ my $help_msg = <<END;
 
   Full Example:
     programname -f mobi \\
+                -p \\
                 -c ./cover.jpg \\
                 -s '<h1>The Camel</h1><p>The Coding Camle Guide</p>' \\
                 -t 'The Camel' \\
                 -a 'Boris Daeppen' \\
-                -o 'the_camle.mobi' \\
+                -o 'the_camel.mobi' \\
+                -e utf-8 \\
                 ./*.pod
 
 END
 
 my %opts;
-getopts('hf:o:c:s:t:a:', \%opts);
+getopts('hpf:o:c:s:t:a:e:', \%opts);
 
 if (exists $opts{h}) {
     print $help_msg;
@@ -91,20 +95,25 @@ foreach my $file (@ARGV) {
     }
 
     if (-d $file) {
-        push (@in_files, { type => 'Dir', path => $file });
+        if (exists $opts{p}) {
+            push (@in_files,{type =>'Dir', path => $file, title => 'pod' });
+        }
+        else {
+            push (@in_files, { type => 'Dir', path => $file });
+        }
     }
     elsif (-f $file and -r $file) {
-        push (@in_files, { type => 'File', path => $file });
+        if (exists $opts{p}) {
+            push (@in_files,{type =>'File', path => $file, title => 'pod'});
+        }
+        else {
+            push (@in_files, { type => 'File', path => $file});
+        }
     }
     else {
         die "ERROR: '$file' is not a regular file or directory\n";
     }
 }
-
-print "Input is ok. Starting EPublisher\n\n";
-
-use EPublisher;
-use EPublisher::Target::Plugin::Mobi;
 
 my %config = (
     config => { FromCMD => { source => \@in_files,
@@ -119,26 +128,42 @@ my %config = (
 );
 
 if (exists $opts{c}) {
+    print "adding cover image: $opts{c}\n";
     $config{config}{FromCMD}{target}{cover} = $opts{c};
 }
 
 if (exists $opts{s}) {
+    print "adding cover html: $opts{s}\n";
     $config{config}{FromCMD}{target}{htmcover} = $opts{s};
 }
 
 if (exists $opts{t}) {
+    print "adding book title: $opts{t}\n";
     $config{config}{FromCMD}{target}{title} = $opts{t};
 }
 
 if (exists $opts{a}) {
+    print "adding author: $opts{a}\n";
     $config{config}{FromCMD}{target}{author} = $opts{a};
 }
 
-print "The option-hash I pass to EPublisher:\n";
+if (exists $opts{e}) {
+    print "adding encoding: $opts{e}\n";
+    $config{config}{FromCMD}{target}{encoding} = $opts{e};
+}
+
+print "All options parsed. Here is the option-hash I pass to EPublisher:\n";
 use Data::Dumper;
-print Dumper(\%config);
+print Dumper($config{config}{FromCMD});
+
+print "Starting EPublisher...\n\n";
+
+use EPublisher;
+use EPublisher::Target::Plugin::Mobi;
 
 my $publisher = EPublisher->new( %config );
 
 $publisher->run( [ 'FromCMD' ] );
+
+print "DONE\n";
 
