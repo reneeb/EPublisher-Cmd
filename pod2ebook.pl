@@ -119,7 +119,7 @@ my %config = (
 );
 
 if (exists $opts{c}) {
-    $config{config}{FromCMD}{target}{imgcover} = $opts{c};
+    $config{config}{FromCMD}{target}{cover} = $opts{c};
 }
 
 if (exists $opts{s}) {
